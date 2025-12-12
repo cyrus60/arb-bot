@@ -1,2 +1,5 @@
-# arb-bot
-Sports betting arbitrage bot. Scans odds from predetermined markets between Pinnacle (sharp sportsbook) and Bet105(soft sportsbook)
+# Arbitrage scanner
+- Sports betting arbitrage bot. Monitors odds from desired markets between Pinnacle (sharp sportsbook) and Bet105(soft sportsbook) for arbitrage opportunities.
+
+# Tech stack
+- Node.js backend to handle websocket connections and arb logic. React frontend to present current arbs in a sorted listbased on profit %, and a dashboard including statistics such as average arb time (probably need to implement DB at this stage), profit per session, and other useful indicators/functionalities to be determined as the project moves forward.  
