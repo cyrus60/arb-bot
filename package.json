@@ -1,0 +1,29 @@
+{
+  "name": "arb-bot",
+  "version": "1.0.0",
+  "description": "Sports betting arbitrage bot. Scans odds from predetermined markets between Pinnacle (sharp sportsbook) and Bet105(soft sportsbook)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cyrus60/arb-bot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/cyrus60/arb-bot/issues"
+  },
+  "homepage": "https://github.com/cyrus60/arb-bot#readme",
+  "dependencies": {
+    "@msgpack/msgpack": "^3.1.2",
+    "msgpack-lite": "^0.1.26",
+    "pako": "^2.1.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "ws": "^8.18.3"
+  }
+}
