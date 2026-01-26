@@ -1,7 +1,6 @@
 const io = require('socket.io-client');
 const pako = require('pako');
 
-
 class Bet105Client {
   constructor() {
     this.socket = null;
@@ -23,22 +22,34 @@ class Bet105Client {
     });
   }
 
-  // test function for now 
-  subscribeToLiveSports() {
-    const event = "live.main.VEZBZ1VFbE9Ua0ZEVEVVZ1MwbENUQT09.eventCoefficients.177958511";
+  // retrieves event data of all current live events on bet105
+  getLiveEventData() {
+    return new Promise((resolve) => {
+      const event = "live.main.VEZBZ1VFbE9Ua0ZEVEVVZ1MwbENUQT09.eventData";
 
-    this.socket.emit("subscribe", [{
-      roomName: event
-    }]);
+      this.socket.emit("subscribe", [{
+        roomName: event
+      }]);
 
-    this.socket.on(event, (binaryData) => {
-      const data = this.decompressData(binaryData);
+      const handler = (binaryData) => {
+        const data = this.decompressData(binaryData);
 
-      console.log(JSON.stringify(data));
+        // after receiving full live state, unsubscribe and remove listener
+        if (!data.isDiff) {
+          this.socket.emit("unsubscribe", [{
+            roomName: event
+          }]);
+          this.socket.off(event, handler);
+
+          resolve(data);
+        } 
+      };
+
+      this.socket.on(event, handler);
     });
   }
 
-  // extracts odds data from state
+  // extracts odds data from given state
   extractOdds(eventId, state) {
 
   }
@@ -82,6 +93,30 @@ class Bet105Client {
         callback(odds);
       }
     });
+  }
+
+  // returns live events of given league
+  fetchEventsByLeague(eventData, targetLeagueId) {
+    const events = [];
+    const sports = eventData.payload.s;
+
+    for (const [sportId, categories] of Object.entries(sports)) {
+      for (const [categoryId, leagues] of Object.entries(categories)) {
+        for (const [leagueId, leagueEvents] of Object.entries(leagues)) {
+        
+          if (leagueId === targetLeagueId) {
+            // Found the league - extract events
+            for (const [eventId, eventData] of Object.entries(leagueEvents)) {
+              events.push({
+                eventId
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return events;
   }
 
   // decompresses raw binary data received from websocket connection
