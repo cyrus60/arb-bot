@@ -5,13 +5,16 @@ class Bet105Client {
   constructor() {
     this.socket = null;
 
+    // cache for league lookups
+    this.leagues = new Map();
+
     // State management
     this.eventStates = new Map();      // Full state for each subscribed event
     this.eventCallbacks = new Map();   // Callbacks for odds updates
   }
 
   // connect to bet105 websocket 
-  connect() {
+  async connect() {
     return new Promise((resolve) => {
       this.socket = io('https://pandora.ganchrow.com', {
         path: '/socket.io',
@@ -22,11 +25,11 @@ class Bet105Client {
         console.log("Connected to Bet105");
         resolve();  // Signal that connection is ready
       });
-  });
-}
+    });
+  }
 
   // retrieves event data of all current live events on bet105
-  getLiveEventData() {
+  async getLiveEventData() {
     return new Promise((resolve) => {
       const event = "live.main.VEZBZ1VFbE9Ua0ZEVEVVZ1MwbENUQT09.eventData";
 
@@ -208,6 +211,35 @@ class Bet105Client {
     }
 
     return events;
+  }
+
+  async loadLeagues() {
+    return new Promise((resolve) => {
+      const channel = 'live.leaguesDiff';
+
+      this.socket.emit('subscribe', [{roomName: channel}]);
+
+      const handler = (binaryData) => {
+        const data = this.decompressData(binaryData);
+
+        if (!data.isDiff) {
+          this.leagues = data.payload;
+          resolve(data.payload);  
+        }
+      }
+      
+      this.socket.on(channel, handler);
+    }); 
+  }
+
+  // function to lookup leagueIds
+  getLeagueId(leagueName) {
+    // loop through league cache and return leagueId of league leagueName 
+    for (const [id, league] of Object.entries(this.leagues)) {
+      if (league.n.toLowerCase().includes(leagueName.toLowerCase())) {
+        return id;
+      }
+    }
   }
 
   // decompresses raw binary data received from websocket connection

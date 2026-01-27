@@ -5,9 +5,13 @@ async function main() {
 
     await client.connect();
 
+    await client.loadLeagues();
+
     const eventData = await client.getLiveEventData();
 
-    const liveNbaEvents = client.fetchEventsByLeague(eventData, '28883');
+    const nbaId = client.getLeagueId('ATP Challenger Concepcion, Chile');
+
+    const liveNbaEvents = client.fetchEventsByLeague(eventData, nbaId.toString());
 
     for (const event of liveNbaEvents) {
         client.subscribeToEvent(event.eventId, (odds) => {
