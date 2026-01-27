@@ -3,15 +3,15 @@ const Bet105Client = require('./bet105');
 async function main() {
     const client = new Bet105Client();
 
-    client.connect();
+    await client.connect();
 
     const eventData = await client.getLiveEventData();
 
-    const liveNhlEvents = client.fetchEventsByLeague(eventData, 4);
+    const liveNbaEvents = client.fetchEventsByLeague(eventData, '28883');
 
-    for (const event of liveNhlEvents) {
-        client.subscribeToEvent(event, (odds) => {
-            console.log(odds);
+    for (const event of liveNbaEvents) {
+        client.subscribeToEvent(event.eventId, (odds) => {
+            console.log(`${event.awayTeam} @ ${event.homeTeam}:`, odds );
         });
     }
 }

@@ -12,15 +12,18 @@ class Bet105Client {
 
   // connect to bet105 websocket 
   connect() {
-    this.socket = io('https://pandora.ganchrow.com', {
-      path: '/socket.io',
-      transports: ['websocket'],
-    });
+    return new Promise((resolve) => {
+      this.socket = io('https://pandora.ganchrow.com', {
+        path: '/socket.io',
+        transports: ['websocket'],
+      });
 
-    this.socket.on('connect', () => {
-      console.log("Connected to Bet105")
-    });
-  }
+      this.socket.on('connect', () => {
+        console.log("Connected to Bet105");
+        resolve();  // Signal that connection is ready
+      });
+  });
+}
 
   // retrieves event data of all current live events on bet105
   getLiveEventData() {
@@ -36,10 +39,12 @@ class Bet105Client {
 
         // after receiving full live state, unsubscribe and remove listener
         if (!data.isDiff) {
-          this.socket.emit("unsubscribe", [{
-            roomName: event
-          }]);
-          this.socket.off(event, handler);
+          // unsubscribing from live event socket at this point causes issues, fix later
+
+          // this.socket.emit("unsubscribe", [{
+          //   roomName: event
+          // }]);
+          // this.socket.off(event, handler);
 
           resolve(data);
         } 
@@ -51,21 +56,101 @@ class Bet105Client {
 
   // extracts odds data from given state
   extractOdds(eventId, state) {
+    if (!state || !state.payload) {
+      return null;
+    }
 
+    try {
+      const mlMarket = state.payload.c?.m?.['3'];
+      const matchData = state.payload.m;
+
+      if (!mlMarket?.o) return null;
+
+      return {
+        eventId,
+        timestamp: state.ti?.t || Date.now(),
+        
+        // Moneyline odds
+        odds: {
+          home: mlMarket.o['1'],
+          away: mlMarket.o['2']
+        },
+
+        // Match info (optional but useful)
+        match: matchData ? {
+          score: {
+            home: matchData.m?.[0],
+            away: matchData.m?.[1]
+          },
+          period: matchData.p,
+          timeRemaining: matchData.t
+        } : null
+      };
+    } catch (err) {
+      console.error('Error extracting odds:', err);
+      return null;
+    }
   }
 
-  // 
+  // patches parent state with updated state based on op from websocket
   applyPatch(state, patch) {
+    // splits payload update into its different parts
+    const { op, path, value } = patch;
+    const keys = path.split('/').filter(k => k);
 
+    if (op === 'replace' || op === 'add') {
+      let obj = state;
+    
+      // update state with new patch data
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!obj[keys[i]]) obj[keys[i]] = {};
+        obj = obj[keys[i]];
+      }
+
+      // set state value to updated value
+      obj[keys[keys.length - 1]] = value;
+
+    } else if (op === 'remove') {
+      let obj = state;
+
+      for (let i = 0; i < keys.length; i++) {
+        obj = obj[keys[i]];
+
+        if (!obj) {
+          return state;
+        }
+      }
+      delete obj[keys[keys.length - 1]];
+    }
+
+    return state;
   }
 
   // updates state for given channel 
   applyUpdate(channel, data) {
+    // if data isDiff, patch state with odds update
     if (data.isDiff) {
 
+      // retrieve existing state
+      let state = (this.eventStates.get(channel));
 
-    } else {
-      this.eventStates.set(channel, data);
+      if (!state) {
+        console.warn("Recieved diff but no base state.")
+        return null;
+      }
+
+      // apply each patch from the payload to the retrieved state
+      for (const patch of data.payload) {
+        state = this.applyPatch(state, patch);
+      }
+
+      // update event state in cache 
+      this.eventStates.set(channel, state);
+      
+      return { payload: state, ti: data.ti }
+
+    } else { // if isDiff is false, store full snapshot 
+      this.eventStates.set(channel, data.payload);
       return data;
     }
   }
@@ -81,6 +166,7 @@ class Bet105Client {
 
     // Handle incoming data
     this.socket.on(channel, (binaryData) => {
+
       const data = this.decompressData(binaryData);
       if (!data) return;
 
@@ -89,7 +175,7 @@ class Bet105Client {
       
       // Extract odds and call callback
       const odds = this.extractOdds(eventId, state);
-      if (odds && callback) {
+      if (odds) {
         callback(odds);
       }
     });
@@ -100,15 +186,20 @@ class Bet105Client {
     const events = [];
     const sports = eventData.payload.s;
 
+    // loop through eventData -- get to league events
     for (const [sportId, categories] of Object.entries(sports)) {
       for (const [categoryId, leagues] of Object.entries(categories)) {
         for (const [leagueId, leagueEvents] of Object.entries(leagues)) {
         
           if (leagueId === targetLeagueId) {
-            // Found the league - extract events
+            // found league - extract events
             for (const [eventId, eventData] of Object.entries(leagueEvents)) {
               events.push({
-                eventId
+                eventId,
+                homeTeam: eventData[0][0],  // Full name
+                awayTeam: eventData[1][0],  // Full name
+                startTime: eventData[2],
+                status: eventData[12]
               });
             }
           }
