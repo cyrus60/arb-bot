@@ -167,9 +167,7 @@ class Bet105Client {
     // Subscribe
     this.socket.emit('subscribe', [{ roomName: channel }]);
 
-    // Handle incoming data
-    this.socket.on(channel, (binaryData) => {
-
+    const handler = (binaryData) => {
       const data = this.decompressData(binaryData);
       if (!data) return;
 
@@ -181,7 +179,10 @@ class Bet105Client {
       if (odds) {
         callback(odds);
       }
-    });
+    };
+
+    // Handle incoming data
+    this.socket.on(channel, handler);
   }
 
   // returns live events of given league
@@ -234,7 +235,7 @@ class Bet105Client {
 
   // function to lookup leagueIds
   getLeagueId(leagueName) {
-    // loop through league cache and return leagueId of league leagueName 
+    // loop through league cache and return leagueId of leagueName 
     for (const [id, league] of Object.entries(this.leagues)) {
       if (league.n.toLowerCase().includes(leagueName.toLowerCase())) {
         return id;
