@@ -88,14 +88,18 @@ class KalshiClient {
             const matchesLeaugue = this.leagues.some(prefix => ticker.startsWith(prefix));
 
             if (matchesLeaugue) {
-                this.callback({
+                // cache event state
+                this.marketStates.set(ticker, {
                     ticker: ticker,
                     price: msg.msg.price,
+                    noPrice: 100 - msg.msg.price,
                     yesBid: msg.msg.yes_bid,
                     yesAsk: msg.msg.yes_ask,
                     volume: msg.msg.volume,
-                    timestamp: msg.msg.ts
+                    timestamp: msg.msg.startsWith
                 });
+
+                this.callback(this.marketStates.get(ticker));
             }
         }
     }
@@ -115,6 +119,10 @@ class KalshiClient {
         }
     }
     
+    // returns market state of given ticker 
+    getMarketState(ticker) {
+        return this.marketStates.get(ticker);
+    }
 }
 
 module.exports = KalshiClient;

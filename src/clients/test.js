@@ -8,6 +8,7 @@ const pathToPrivKey = process.env.KALSHI_KEY_PATH;
 
 // KALSHI
 async function main() {
+    // instantiate kalshi client
     const client = new KalshiClient(
         kalshiAPIKey,
         pathToPrivKey
@@ -15,7 +16,7 @@ async function main() {
 
     await client.connect();
 
-    client.addLeague('KXNHLGAME');
+    client.addLeague('KXATPCHALLENGERMATCH');
 
     client.subscribe((update) => {
         console.log(`${update.ticker}: ${update.price}`)
