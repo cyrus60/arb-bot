@@ -20,6 +20,7 @@
   "homepage": "https://github.com/cyrus60/arb-bot#readme",
   "dependencies": {
     "@msgpack/msgpack": "^3.1.2",
+    "dotenv": "^17.2.3",
     "msgpack-lite": "^0.1.26",
     "node-fetch": "^3.3.2",
     "pako": "^2.1.0",

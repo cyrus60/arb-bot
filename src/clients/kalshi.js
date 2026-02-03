@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
+const https = require('https');
 
 class KalshiClient {
     constructor(apiKey, privKeyPath) {
@@ -9,7 +10,9 @@ class KalshiClient {
         this.privateKey = fs.readFileSync(path.resolve(privKeyPath), 'utf8');
         this.socket = null;
         this.messageId = 1;
-        this.marketCallbacks = new Map();
+        this.callback = null;
+        this.marketStates = new Map();
+        this.leagues = [];
     }
 
     // create Kalshi signature
@@ -26,6 +29,7 @@ class KalshiClient {
         }, 'base64');
     }
 
+    // connect/authenticate to kalshi websocket using signature
     async connect() {
         return new Promise((resolve, reject) => {
             const timeStamp = Date.now().toString();
@@ -52,33 +56,62 @@ class KalshiClient {
                 reject(err);
             })
 
+            // call handler function for each received message
             this.socket.on('message', (data) => {
                 this.handleMessage(data);
             })
         });
     }
 
-    async getLiveSports() {
-        const url = 'https://api.elections.kalshi.com/trade-api/v2/markets?status=open&limit=1000';
-        
+    // subscribe to market odds updates
+    subscribe(callback) {
+        // set callback to handle odds updates
+        this.callback = callback;
+
+        this.socket.send(JSON.stringify({
+            id: this.id++,
+            cmd: 'subscribe',
+            params: {
+                channels: ['ticker']
+            }
+        }));
     }
 
-    subscribe(ticker, callback) {
-
-    }
-
+    // handler function for websocket messages
     handleMessage(data) {
         const msg = JSON.parse(data);
 
-        if(msg.type === 'ticker') {
+        if(msg.type === 'ticker' && this.callback) {
             const ticker = msg.msg.market_ticker;
-            const callback = this.marketCallbacks.get(ticker);
 
-            if (callback) {
-                callback({
-                    
-                })
+            // filter tickers based on set league filters 
+            const matchesLeaugue = this.leagues.some(prefix => ticker.startsWith(prefix));
+
+            if (matchesLeaugue) {
+                this.callback({
+                    ticker: ticker,
+                    price: msg.msg.price,
+                    yesBid: msg.msg.yes_bid,
+                    yesAsk: msg.msg.yes_ask,
+                    volume: msg.msg.volume,
+                    timestamp: msg.msg.ts
+                });
             }
+        }
+    }
+
+    // add league to filter 
+    addLeague(leaguePrefix) {
+        if (!this.leagues.includes(leaguePrefix)) {
+            this.leagues.push(leaguePrefix);
+        }
+    }
+
+    // remove league from filter
+    removeLeague(leaguePrefix) {
+        const index =  this.leagues.indexOf(leaguePrefix);
+        if (index > -1) {
+            this.leagues.splice(index, 1);
         }
     }
     

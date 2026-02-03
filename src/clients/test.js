@@ -1,21 +1,25 @@
 const Bet105Client = require('./bet105');
 const KalshiClient = require('./kalshi');
+const https = require('https');
+require('dotenv').config();
 
-const kalshiAPIKey = '';
-const pathToPrivKey = '/home/cyrus/keys/arbkey.pem';
+const kalshiAPIKey = process.env.KALSHI_API_KEY;
+const pathToPrivKey = process.env.KALSHI_KEY_PATH;
 
 // KALSHI
 async function main() {
     const client = new KalshiClient(
         kalshiAPIKey,
         pathToPrivKey
-    )
+    );
 
-    client.connect();
+    await client.connect();
 
-    const liveSports = client.getLiveSports();
+    client.addLeague('KXNHLGAME');
 
-    console.log(liveSports);
+    client.subscribe((update) => {
+        console.log(`${update.ticker}: ${update.price}`)
+    })
 }
 
 // BET105
