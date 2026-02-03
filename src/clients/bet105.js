@@ -162,26 +162,28 @@ class Bet105Client {
   subscribeToEvent(eventId, callback) {
     const channel = `live.main.VEZBZ1VFbE9Ua0ZEVEVVZ1MwbENUQT09.eventCoefficients.${eventId}`;
 
+    // cache callback for this channel
     this.eventCallbacks.set(channel, callback);
 
     // Subscribe
     this.socket.emit('subscribe', [{ roomName: channel }]);
 
+    // handler function for all messages through subscribed channel
     const handler = (binaryData) => {
       const data = this.decompressData(binaryData);
       if (!data) return;
 
-      // Apply update (full snapshot or diff)
+      // applyUpdate stores full snapshot if message !isDiff, updates state otherwise
       const state = this.applyUpdate(channel, data);
       
-      // Extract odds and call callback
+      // extract odds from state and call callback on data
       const odds = this.extractOdds(eventId, state);
       if (odds) {
         callback(odds);
       }
     };
 
-    // Handle incoming data
+    // call handler on any message for channel
     this.socket.on(channel, handler);
   }
 
@@ -214,6 +216,7 @@ class Bet105Client {
     return events;
   }
 
+  // loads and caches all live league data
   async loadLeagues() {
     return new Promise((resolve) => {
       const channel = 'live.leaguesDiff';
@@ -243,7 +246,12 @@ class Bet105Client {
     }
   }
 
-  // decompresses raw binary data received from websocket connection
+  // returns all events 
+  getLiveEvents() {
+    return this.eventStates.entries();
+  }
+
+  // decompresses raw binary data received from websocket 
   decompressData(binaryData) {
     try {
       const rawBytes = pako.ungzip(binaryData);

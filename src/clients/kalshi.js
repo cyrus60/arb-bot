@@ -6,12 +6,20 @@ const https = require('https');
 
 class KalshiClient {
     constructor(apiKey, privKeyPath) {
+        // keys for kalshi auth
         this.apiKey = apiKey;
         this.privateKey = fs.readFileSync(path.resolve(privKeyPath), 'utf8');
+
         this.socket = null;
         this.messageId = 1;
+
+        // stores callback function for subscription updates
         this.callback = null;
+
+        // keeps track of markets and their current states
         this.marketStates = new Map();
+
+        // acts as filter for leagues to subscribe to live events for 
         this.leagues = [];
     }
 
@@ -84,13 +92,23 @@ class KalshiClient {
         if(msg.type === 'ticker' && this.callback) {
             const ticker = msg.msg.market_ticker;
 
+            // split ticker into ticker-marketId-winningTeam
+            const tickerSplit = ticker.split('-');
+            const marketId = tickerSplit[1];
+
+            // price is for a yes win on this team
+            const team = tickerSplit[2];
+
             // filter tickers based on set league filters 
             const matchesLeaugue = this.leagues.some(prefix => ticker.startsWith(prefix));
 
+            // if event is of a league in the league filter, cache it and call callback
             if (matchesLeaugue) {
                 // cache event state
                 this.marketStates.set(ticker, {
                     ticker: ticker,
+                    id: marketId,
+                    team: team,
                     price: msg.msg.price,
                     noPrice: 100 - msg.msg.price,
                     yesBid: msg.msg.yes_bid,
@@ -122,6 +140,11 @@ class KalshiClient {
     // returns market state of given ticker 
     getMarketState(ticker) {
         return this.marketStates.get(ticker);
+    }
+
+    // returns all markets in cache
+    getMarkets() {
+        return this.marketStates.entries();
     }
 }
 
