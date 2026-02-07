@@ -2,7 +2,6 @@ const WebSocket = require('ws');
 const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
-const https = require('https');
 
 class KalshiClient {
     constructor(apiKey, privKeyPath) {
@@ -55,7 +54,7 @@ class KalshiClient {
             });
 
             this.socket.on('open', () => {
-                console.log('connected to Kalshi');
+                console.log('Connected to Kalshi');
                 resolve();
             })
 
@@ -69,6 +68,22 @@ class KalshiClient {
                 this.handleMessage(data);
             })
         });
+    }
+
+    // preforms all necesarry operations necesarry before subscribing to markets
+    async start(league) {
+        await this.connect();
+
+        // add league to filter
+        this.addLeague(league);
+
+        // empty susbcribe callback just to fetch markets for buildEvents function
+        this.subscribe(() => {});
+
+        // wait to collect markets
+        await sleep(10000);
+
+        return this.getMarkets();
     }
 
     // subscribe to market odds updates
@@ -96,19 +111,19 @@ class KalshiClient {
             const tickerSplit = ticker.split('-');
             const marketId = tickerSplit[1];
 
-            // price is for a yes win on this team
-            const team = tickerSplit[2];
+            // price represents a yes win wager on team at this index
+            const winningTeam = tickerSplit[2];
 
             // filter tickers based on set league filters 
             const matchesLeaugue = this.leagues.some(prefix => ticker.startsWith(prefix));
 
-            // if event is of a league in the league filter, cache it and call callback
+            // if event is of a league in the league filter, cache it and call callback on marketData
             if (matchesLeaugue) {
                 // cache event state
                 this.marketStates.set(ticker, {
                     ticker: ticker,
                     id: marketId,
-                    team: team,
+                    winningTeam: winningTeam,
                     price: msg.msg.price,
                     noPrice: 100 - msg.msg.price,
                     yesBid: msg.msg.yes_bid,
@@ -144,7 +159,7 @@ class KalshiClient {
 
     // returns all markets in cache
     getMarkets() {
-        return this.marketStates.entries();
+        return Array.from(this.marketStates.values());
     }
 }
 

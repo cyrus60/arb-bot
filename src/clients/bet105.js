@@ -8,9 +8,9 @@ class Bet105Client {
     // cache for league lookups
     this.leagues = new Map();
 
-    // State management
-    this.eventStates = new Map();      // Full state for each subscribed event
-    this.eventCallbacks = new Map();   // Callbacks for odds updates
+    // state management
+    this.eventStates = new Map();      // full state for each subscribed event
+    this.eventCallbacks = new Map();   // callbacks for odds updates
   }
 
   // connect to bet105 websocket 
@@ -26,6 +26,19 @@ class Bet105Client {
         resolve();  // Signal that connection is ready
       });
     });
+  }
+
+  // preforms all operations necesarry before subscribing to events
+  async start(league) {
+    await this.connect();
+    
+    await this.loadLeagues();
+
+    const eventData = await this.getLiveEventData();
+
+    const leagueId = this.getLeagueId(league);
+
+    return this.fetchEventsByLeague(eventData, leagueId);
   }
 
   // retrieves event data of all current live events on bet105
@@ -165,7 +178,6 @@ class Bet105Client {
     // cache callback for this channel
     this.eventCallbacks.set(channel, callback);
 
-    // Subscribe
     this.socket.emit('subscribe', [{ roomName: channel }]);
 
     // handler function for all messages through subscribed channel
@@ -192,18 +204,18 @@ class Bet105Client {
     const events = [];
     const sports = eventData.payload.s;
 
-    // loop through eventData -- get to league events
+    // loop through eventData payload -- get to league events
     for (const [sportId, categories] of Object.entries(sports)) {
       for (const [categoryId, leagues] of Object.entries(categories)) {
         for (const [leagueId, leagueEvents] of Object.entries(leagues)) {
         
           if (leagueId === targetLeagueId) {
-            // found league - extract events
+            // found league - extract eventData for all events 
             for (const [eventId, eventData] of Object.entries(leagueEvents)) {
               events.push({
                 eventId,
-                homeTeam: eventData[0][0],  // Full name
-                awayTeam: eventData[1][0],  // Full name
+                homeTeam: eventData[0][0],  // full home team name
+                awayTeam: eventData[1][0],  // full away team name 
                 startTime: eventData[2],
                 status: eventData[12]
               });
@@ -244,11 +256,6 @@ class Bet105Client {
         return id;
       }
     }
-  }
-
-  // returns all events 
-  getLiveEvents() {
-    return this.eventStates.entries();
   }
 
   // decompresses raw binary data received from websocket 
