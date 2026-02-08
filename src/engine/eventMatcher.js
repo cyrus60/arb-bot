@@ -1,9 +1,6 @@
 class EventMatcher {
-    constructor(bet105Client, kalshiClient) {
-        this.bet105 = bet105Client;
-        this.kalshi = kalshiClient;
-
-        // mapping from ID/ticker to gameKey for each game 
+    constructor() {
+        // mappings from ID/ticker to gameKey for each game 
         this.gamesByBet105Id = new Map();
         this.gamesByKalshiTicker = new Map();
         this.games = new Map();

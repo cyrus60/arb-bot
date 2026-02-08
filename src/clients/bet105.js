@@ -32,12 +32,16 @@ class Bet105Client {
   async start(league) {
     await this.connect();
     
+    // caches league information of all live leagues
     await this.loadLeagues();
 
+    // retrieves eventData for all live events
     const eventData = await this.getLiveEventData();
 
+    // fetch leagueIds for desired league(s)
     const leagueId = this.getLeagueId(league);
 
+    // returns data for all events of given league
     return this.fetchEventsByLeague(eventData, leagueId);
   }
 
@@ -68,6 +72,41 @@ class Bet105Client {
 
       this.socket.on(event, handler);
     });
+  }
+
+  // loads and caches all live league data
+  async loadLeagues() {
+    return new Promise((resolve) => {
+      const channel = 'live.leaguesDiff';
+
+      this.socket.emit('subscribe', [{roomName: channel}]);
+
+      const handler = (binaryData) => {
+        const data = this.decompressData(binaryData);
+
+        if (!data.isDiff) {
+          this.leagues = data.payload;
+          resolve(data.payload);  
+        }
+      }
+      
+      this.socket.on(channel, handler);
+    }); 
+  }
+
+  // adds league (not sure if this works or if this should be here? don't think this should be here)
+  addLeague(league) {
+    return this.fetchEventsByLeague(this.getLiveEventData(), this.getLeagueId(league));
+  }
+
+  // function to lookup leagueIds
+  getLeagueId(leagueName) {
+    // loop through league cache and return leagueId of leagueName 
+    for (const [id, league] of Object.entries(this.leagues)) {
+      if (league.n.toLowerCase().includes(leagueName.toLowerCase())) {
+        return id;
+      }
+    }
   }
 
   // extracts odds data from given state
@@ -226,36 +265,6 @@ class Bet105Client {
     }
 
     return events;
-  }
-
-  // loads and caches all live league data
-  async loadLeagues() {
-    return new Promise((resolve) => {
-      const channel = 'live.leaguesDiff';
-
-      this.socket.emit('subscribe', [{roomName: channel}]);
-
-      const handler = (binaryData) => {
-        const data = this.decompressData(binaryData);
-
-        if (!data.isDiff) {
-          this.leagues = data.payload;
-          resolve(data.payload);  
-        }
-      }
-      
-      this.socket.on(channel, handler);
-    }); 
-  }
-
-  // function to lookup leagueIds
-  getLeagueId(leagueName) {
-    // loop through league cache and return leagueId of leagueName 
-    for (const [id, league] of Object.entries(this.leagues)) {
-      if (league.n.toLowerCase().includes(leagueName.toLowerCase())) {
-        return id;
-      }
-    }
   }
 
   // decompresses raw binary data received from websocket 

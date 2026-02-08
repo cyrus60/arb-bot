@@ -13,8 +13,8 @@ async function main() {
     const bet105 = new Bet105Client();
     const kalshi = new KalshiClient(kalshiAPIKey, pathToPrivKey);
 
-    const matcher = new EventMatcher(bet105, kalshi);
-    const finder =  new ArbDetector(matcher);
+    const matcher = new EventMatcher();
+    const finder =  new ArbDetector();
 
     // connect to websockets
     await bet105.connect();
@@ -51,21 +51,41 @@ async function main() {
             const gameKey = matcher.getGameKey(event.eventId);
             
             if (gameKey) {
-                console.log(matcher.getGameInfo(gameKey));
+
+                finder.onBet105Update(odds, gameKey);
+                console.log(`${event.homeTeam} @ ${event.awayTeam}`);
+                console.log(finder.getOdds(gameKey));
                 console.log();
+                // LOGGING 
+                // console.log('BET105');
+                // console.log(matcher.getGameInfo(gameKey));
+
+                // // debug for checking if event is currently in play (needed?)
+                // // console.log(event.status);
+
+                // console.log();
             }
         });
     }
 
     // subscribe to kalshi tickers 
     kalshi.subscribe((update) => {
-        // console.log(`KALSHI: ${update.ticker}: ${update.price}`)
         const gameKey = matcher.getGameKeyFromTicker(update.ticker);
 
         if (gameKey) {
-            console.log(matcher.getGameInfo(gameKey));
+            const teams = gameKey.split('-');
+
+            finder.onKalshiUpdate(update, gameKey);
+            console.log(`${teams[0]} @ ${teams[1]}`);
+            console.log(finder.getOdds(gameKey));
             console.log();
         }
+        // LOGGING
+        // if (gameKey) {
+        //     console.log('KALSHI');
+        //     console.log(matcher.getGameInfo(gameKey));
+        //     console.log();
+        // }
     })
 }
 
