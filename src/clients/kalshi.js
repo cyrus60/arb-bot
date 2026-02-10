@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const fs = require('fs');
 const crypto = require('crypto');
 const path = require('path');
+const sleep = require('sleep-promise');
 
 class KalshiClient {
     constructor(apiKey, privKeyPath) {
@@ -70,20 +71,10 @@ class KalshiClient {
         });
     }
 
-    // preforms all necesarry operations necesarry before subscribing to markets
-    async start(league) {
+    // connects to websocket and subscribes with empty callback to 
+    async start() {
         await this.connect();
-
-        // add league to filter
-        this.addLeague(league);
-
-        // empty susbcribe callback just to fetch markets for buildEvents function
         this.subscribe(() => {});
-
-        // wait to collect markets
-        await sleep(10000);
-
-        return this.getMarkets();
     }
 
     // subscribe to market odds updates
@@ -137,11 +128,14 @@ class KalshiClient {
         }
     }
 
-    // add league to filter 
-    addLeague(leaguePrefix) {
+    // add league to filter, waits for markets to populate cache, and returns markets for given leagues
+    async addLeague(leaguePrefix) {
         if (!this.leagues.includes(leaguePrefix)) {
             this.leagues.push(leaguePrefix);
+            await sleep(10000);
         }
+
+        return this.getMarketsByLeague(league);
     }
 
     // remove league from filter
@@ -152,6 +146,12 @@ class KalshiClient {
         }
     }
     
+    // returns only markets of given leagues
+    getMarketsByLeague(league) {
+        return Array.from(this.getMarkets().values())
+        .filter(m => m.ticker.startsWith(league));
+    }
+
     // returns market state of given ticker 
     getMarketState(ticker) {
         return this.marketStates.get(ticker);

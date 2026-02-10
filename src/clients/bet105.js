@@ -8,6 +8,9 @@ class Bet105Client {
     // cache for league lookups
     this.leagues = new Map();
 
+    // cache for liveEvent data obtained on start
+    this.eventData = null;
+
     // state management
     this.eventStates = new Map();      // full state for each subscribed event
     this.eventCallbacks = new Map();   // callbacks for odds updates
@@ -29,20 +32,14 @@ class Bet105Client {
   }
 
   // preforms all operations necesarry before subscribing to events
-  async start(league) {
+  async start() {
     await this.connect();
     
     // caches league information of all live leagues
     await this.loadLeagues();
 
-    // retrieves eventData for all live events
-    const eventData = await this.getLiveEventData();
-
-    // fetch leagueIds for desired league(s)
-    const leagueId = this.getLeagueId(league);
-
-    // returns data for all events of given league
-    return this.fetchEventsByLeague(eventData, leagueId);
+    // cache liveEvent data on start 
+    this.eventData = await this.getLiveEventData();
   }
 
   // retrieves event data of all current live events on bet105
@@ -94,9 +91,19 @@ class Bet105Client {
     }); 
   }
 
-  // adds league (not sure if this works or if this should be here? don't think this should be here)
-  addLeague(league) {
-    return this.fetchEventsByLeague(this.getLiveEventData(), this.getLeagueId(league));
+  // adds league to filter, subscribes to and returns array of event objects from given league
+  async addLeague(league, callback) {
+    const leagueId = this.getLeagueId(league);
+    const events = this.fetchEventsByLeague(this.eventData, leagueId);
+
+    // loop through live events of given league, subscribe and call callback
+    for (const event of events) {
+      this.subscribeToEvent(event.eventId, (odds) => {
+        callback(event, odds);
+      })
+    }
+
+    return events;
   }
 
   // function to lookup leagueIds

@@ -164,6 +164,14 @@ class EventMatcher {
         };
     }
 
+    getLeagueFromTicker(ticker) {
+        if (ticker.startsWith('KXNBAGAME')) return 'NBA';
+        if (ticker.startsWith('KXNHLGAME')) return 'NHL';
+        if (ticker.startsWith('KXNFLGAME')) return 'NFL';
+        if (ticker.startsWith('KXMLBGAME')) return 'MLB';
+        return null;
+    }
+
     // creates game key from bet105 event 
     createGameKey(bet105Event) {
         return `${bet105Event.homeTeam}-${bet105Event.awayTeam}-${bet105Event.startTime}`;
