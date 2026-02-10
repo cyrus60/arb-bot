@@ -2,7 +2,6 @@ const Bet105Client = require('./clients/bet105');
 const KalshiClient = require('./clients/kalshi');
 const EventMatcher = require('./engine/eventMatcher');
 const ArbDetector = require('./engine/arbDetector');
-const sleep = require('sleep-promise');
 require('dotenv').config();
 
 const kalshiAPIKey = process.env.KALSHI_API_KEY;
@@ -47,6 +46,7 @@ async function main() {
     addLeague(bet105, kalshi, matcher, 'NBA', onBet105Update);
 
     kalshi.subscribe((update) => {
+        // callback for each kalshi odds update
         const gameKey = matcher.getGameKeyFromTicker(update.ticker);
 
         if (gameKey) {

@@ -164,11 +164,13 @@ class EventMatcher {
         };
     }
 
+    // returns league associated with kalshi ticker
     getLeagueFromTicker(ticker) {
         if (ticker.startsWith('KXNBAGAME')) return 'NBA';
         if (ticker.startsWith('KXNHLGAME')) return 'NHL';
         if (ticker.startsWith('KXNFLGAME')) return 'NFL';
         if (ticker.startsWith('KXMLBGAME')) return 'MLB';
+        if (ticker.startsWith('KXNCAAMGAME')) return 'NCAAM';
         return null;
     }
 
