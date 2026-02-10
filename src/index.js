@@ -32,15 +32,12 @@ async function main() {
                 
         if (gameKey) {
             finder.onBet105Update(odds, gameKey);
-            console.log(`${event.homeTeam} @ ${event.awayTeam}`);
-            console.log(finder.getOdds(gameKey));
-            console.log();
         }
     }
 
     // start clients 
-    bet105.start();
-    kalshi.start();
+    await bet105.start();
+    await kalshi.start();
    
     // add league to both clients to search for arbs in
     addLeague(bet105, kalshi, matcher, 'NBA', onBet105Update);

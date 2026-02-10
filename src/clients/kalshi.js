@@ -129,9 +129,9 @@ class KalshiClient {
     }
 
     // add league to filter, waits for markets to populate cache, and returns markets for given leagues
-    async addLeague(leaguePrefix) {
-        if (!this.leagues.includes(leaguePrefix)) {
-            this.leagues.push(leaguePrefix);
+    async addLeague(league) {
+        if (!this.leagues.includes(league)) {
+            this.leagues.push(league);
             await sleep(10000);
         }
 
