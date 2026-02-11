@@ -83,7 +83,50 @@ class EventMatcher {
             }, 
 
             NCAAMB: {
+                // BIG10
+                'Purdue': 'PUR',
+                'Nebraska': 'NEB',
+                'Wisconsin': 'WIS',
+                'Illinois': 'ILL',
 
+
+                // SEC
+                'Auburn': 'AUB',
+                'Arkansas': 'ARK',
+                'Vanderbilt': 'VAN',
+
+                // ACC
+                'North Carolina': 'UNC',
+                'Miami Florida': 'MIA',
+                'Virginia': 'UVA',
+                'Florida State': 'FSU',
+                'Duke': 'DUKE',
+                'Pittsburgh': 'PITT',
+                'Notre Dame': 'ND',
+
+                // BIG 12
+                'Baylor': 'BAY',
+                'Utah U': 'UTAH',
+                'Houston': 'HOU',
+                'Oklahoma State': 'OKST',
+                'Arizona State': 'ASU',
+                'Iowa State': 'ISU',
+                'TCU': 'TCU'
+            },
+
+            WOMHOCKEY: {
+                'Finland': 'FIN',
+                'Slovakia': 'SVK',
+                'Italy': 'ITA',
+                'Sweden': 'SWE', 
+                'Latvia': 'LVA',
+                'USA': 'USA',
+                'Czech Republic': 'CZE',
+                'Canada': 'CAN',
+                'Switzerland': 'CHE',
+                'France': 'FRA',
+                'Denmark': 'DNK',
+                'Germany': 'DEU'
             }
         };
     }
@@ -104,7 +147,7 @@ class EventMatcher {
                     .map(m => m.ticker);
 
                 // set gamekey for bet105 map
-                this.gamesByBet105Id.set(event.eventId, gameKey);
+                this.gamesByBet105Id.set(String(event.eventId), gameKey);
 
                 // set gamekey for both kalshi tickers 
                 relatedTickers.forEach(ticker => {
@@ -121,6 +164,7 @@ class EventMatcher {
             }
         }
     }
+
 
     // return abbreviation for team
     getAbbreviation(teamName, league) {
@@ -148,7 +192,6 @@ class EventMatcher {
             const parsed = this.parseTicker(market.ticker);
 
             if (parsed.teams.includes(home) && parsed.teams.includes(away)) {
-                console.log('match');
                 return market;
             }
         }
@@ -170,7 +213,8 @@ class EventMatcher {
         if (ticker.startsWith('KXNHLGAME')) return 'NHL';
         if (ticker.startsWith('KXNFLGAME')) return 'NFL';
         if (ticker.startsWith('KXMLBGAME')) return 'MLB';
-        if (ticker.startsWith('KXNCAAMGAME')) return 'NCAAM';
+        if (ticker.startsWith('KXNCAAMBGAME')) return 'NCAAMB';
+        if (ticker.startsWith('KXWOMHOCKEY')) return 'WOMHOCKEY';
         return null;
     }
 

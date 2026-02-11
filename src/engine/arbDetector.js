@@ -7,6 +7,9 @@ class ArbDetector {
 
         // mapping stores active arbs for display
         this.activeArbs = new Map();
+
+        // testing
+        this.arbsFound = 0;
     }
 
     // function called every time there is an odds update on a bet105Event
@@ -65,6 +68,7 @@ class ArbDetector {
         // if there are no odds for any side of event, return 
         if (!odds?.bet105?.home || !odds?.bet105?.away ||
             !odds?.kalshi?.home || !odds?.kalshi?.away) {
+                // this.displayArbs();
                 return;
         }
 
@@ -133,6 +137,7 @@ class ArbDetector {
         console.clear();
         console.log('========= ARB MONITOR =========');
         console.log(`Active arbs: ${this.activeArbs.size}`);
+        console.log('Arbs found: ' + this.arbsFound);
         console.log('');
 
         if (this.activeArbs.size === 0) {
@@ -145,12 +150,20 @@ class ArbDetector {
 
         for (const arb of sorted) {
             console.log(`${arb.profitPct}% | ${arb.awayTeam} @ ${arb.homeTeam}`);
-            console.log(`   ${arb.platform1} $${arb.stake1} @ ${arb.odds1}`);
-            console.log(`   ${arb.platform2} $${arb.stake2} @ ${arb.odds2}`);
+            console.log(`   ${arb.platform1} | $${arb.stake1} on ${arb.team1} @ ${this.decimalToAmerican(arb.odds1)}`);
+            console.log(`   ${arb.platform2} | $${arb.stake2} on ${arb.team2} @ ${this.decimalToAmerican(arb.odds2)}`);
             console.log('');
         }
 
         console.log(`Updated ${new Date().toLocaleTimeString()}`);
+    }
+
+    decimalToAmerican(decimalOdds) {
+        if (decimalOdds >= 2) {
+            return Math.round((decimalOdds - 1) * 100);
+        } else {
+            return Math.round(-100 / (decimalOdds - 1));
+        }
     }
 
     // returns kalshi odds as 

@@ -8,14 +8,13 @@ const kalshiAPIKey = process.env.KALSHI_API_KEY;
 const pathToPrivKey = process.env.KALSHI_KEY_PATH;
 
 // adds league to both clients and builds events 
-async function addLeague(bet105, kalshi, matcher, league, callback) {
-    // convert given league to kalshi league name
-    const kalshiLeague = `KX${league}GAME`;
+async function addLeague(bet105, kalshi, matcher, kalshiLeague, bet105League, callback) {
+    const kalshiLeagueName = `KX${kalshiLeague}GAME`;
 
-    const events = await bet105.addLeague(league, callback);
-    const markets = await kalshi.addLeague(kalshiLeague);
+    const events = await bet105.addLeague(bet105League, callback);
+    const markets = await kalshi.addLeague(kalshiLeagueName);
 
-    matcher.buildEvents(events, markets, league);
+    matcher.buildEvents(events, markets, kalshiLeague);
 }
 
 async function main() {
@@ -40,7 +39,9 @@ async function main() {
     await kalshi.start();
    
     // add league to both clients to search for arbs in
-    addLeague(bet105, kalshi, matcher, 'NBA', onBet105Update);
+    // await addLeague(bet105, kalshi, matcher, 'NCAAMB', 'College Basketball', onBet105Update);
+    // await addLeague(bet105, kalshi, matcher, 'NBA', 'NBA', onBet105Update);
+    await addLeague(bet105, kalshi, matcher, 'WOMHOCKEY', 'INTERNATIONAL HOCKEY OLYMPIC GAMES', onBet105Update);
 
     kalshi.subscribe((update) => {
         // callback for each kalshi odds update
