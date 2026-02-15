@@ -2,28 +2,30 @@ const Bet105Client = require('./clients/bet105');
 const KalshiClient = require('./clients/kalshi');
 const EventMatcher = require('./engine/eventMatcher');
 const ArbDetector = require('./engine/arbDetector');
+// const ArbDetector =  require('./engine/arbDetectorTest');
 require('dotenv').config();
 
 const kalshiAPIKey = process.env.KALSHI_API_KEY;
 const pathToPrivKey = process.env.KALSHI_KEY_PATH;
 
-// adds league to both clients and builds events 
-async function addLeague(bet105, kalshi, matcher, kalshiLeague, bet105League, callback) {
-    const kalshiLeagueName = `KX${kalshiLeague}GAME`;
-
-    const events = await bet105.addLeague(bet105League, callback);
-    const markets = await kalshi.addLeague(kalshiLeagueName);
-
-    matcher.buildEvents(events, markets, kalshiLeague);
+// map of kalshi league abbreviations to bet105 league names
+const leagueMap = {
+    'NCAAMB': 'College Basketball',
+    'WOMHOCKEY': 'WINTER OLYMPICS HOCKEY - MEN',
+    'NBA': 'NBA',
+    'NHL': 'NHL',
+    'MLB': 'MLB'
 }
 
 async function main() {
-    //instantiate clients
+    // instantiate clients
     const bet105 = new Bet105Client();
     const kalshi = new KalshiClient(kalshiAPIKey, pathToPrivKey);
 
     const matcher = new EventMatcher();
     const finder =  new ArbDetector(matcher);
+
+    const activeLeagues = [];
 
     // callback function for bet105 odds update
     const onBet105Update = (event, odds) => {
@@ -34,24 +36,50 @@ async function main() {
         }
     }
 
+    // callback for kalshi orderbook update
+    const onKalshiUpdate = (update) => {
+        const gameKey = matcher.getGameKeyFromTicker(update.ticker);
+                
+        if (gameKey) {
+            finder.onKalshiUpdate(update, gameKey, matcher.getLeagueFromTicker(update.ticker));
+        }
+    }
+
+    // adds league to each client
+    const addLeague = async (kalshiLeague) => {
+        await bet105.addLeague(leagueMap[kalshiLeague]);
+        await kalshi.addLeague(`KX${kalshiLeague}GAME`);
+
+        activeLeagues.push(kalshiLeague);
+    }
+
+    // builds events via matcher, subscribes to events with each client
+    const buildAndSubscribe = () => {
+        // loop through curren activeLeagues -> build events and subscribe
+        for (const league of activeLeagues) {
+            matcher.buildEvents(bet105.getEvents(), kalshi.getTickers(), league);
+
+            bet105.subscribeToEvents(onBet105Update);
+            kalshi.subscribe(onKalshiUpdate);
+        }
+    }
+
     // start clients 
     await bet105.start();
     await kalshi.start();
-   
-    // add league to both clients to search for arbs in
-    // await addLeague(bet105, kalshi, matcher, 'NCAAMB', 'College Basketball', onBet105Update);
-    // await addLeague(bet105, kalshi, matcher, 'NBA', 'NBA', onBet105Update);
-    await addLeague(bet105, kalshi, matcher, 'WOMHOCKEY', 'INTERNATIONAL HOCKEY OLYMPIC GAMES', onBet105Update);
 
-    kalshi.subscribe((update) => {
-        // callback for each kalshi odds update
-        const gameKey = matcher.getGameKeyFromTicker(update.ticker);
+    // adds league to both clients 
+    await addLeague('NCAAMB');
 
-        if (gameKey) {
-            const league = matcher.getLeagueFromTicker(update.ticker);
-            finder.onKalshiUpdate(update, gameKey, league);
-        }
-    })
+    // build events with matcher and subscribe to ws updates
+    buildAndSubscribe();
+
+    // refresh liveEvents for bet105 every 10 minutes
+    setInterval(async () => {
+        await bet105.refreshEvents();
+
+        buildAndSubscribe();
+    }, 10 * 60 * 1000);
 }
 
 main();

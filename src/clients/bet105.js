@@ -5,15 +5,22 @@ class Bet105Client {
   constructor() {
     this.socket = null;
 
-    // cache for league lookups
+    // cache for league lookup of all leagues
     this.leagues = new Map();
-
-    // cache for liveEvent data obtained on start
-    this.eventData = null;
 
     // state management
     this.eventStates = new Map();      // full state for each subscribed event
-    this.eventCallbacks = new Map();   // callbacks for odds updates
+
+    // array holding events to be subscribed to 
+    this.events = [];
+
+    // keeps track of which leagues are being monitored
+    this.selectedLeagues = [];
+
+    // set of all subscribed eventIds - used to ensure events aren't subscribed to twice
+    this.subscribedEvents = new Set();
+
+    this.eventData = null;
   }
 
   // connect to bet105 websocket 
@@ -37,41 +44,35 @@ class Bet105Client {
     
     // caches league information of all live leagues
     await this.loadLeagues();
-
-    // cache liveEvent data on start 
-    this.eventData = await this.getLiveEventData();
   }
 
   // retrieves event data of all current live events on bet105
   async getLiveEventData() {
-    return new Promise((resolve) => {
-      const event = "live.main.VEZBZ1VFbE9Ua0ZEVEVVZ1MwbENUQT09.eventData";
+      // Return cached if exists
+      if (this.eventData) {
+          return this.eventData;
+      }
 
-      this.socket.emit("subscribe", [{
-        roomName: event
-      }]);
+      return new Promise((resolve) => {
+          const event = "live.main.VEZBZ1VFbE9Ua0ZEVEVVZ1MwbENUQT09.eventData";
 
-      const handler = (binaryData) => {
-        const data = this.decompressData(binaryData);
+          this.socket.emit("subscribe", [{ roomName: event }]);
 
-        // after receiving full live state, unsubscribe and remove listener
-        if (!data.isDiff) {
-          // unsubscribing from live event socket at this point causes issues, fix later
+          const handler = (binaryData) => {
+              const data = this.decompressData(binaryData);
 
-          // this.socket.emit("unsubscribe", [{
-          //   roomName: event
-          // }]);
-          // this.socket.off(event, handler);
+              if (!data.isDiff) {
+                  this.eventData = data;
+                  this.socket.off(event, handler);
+                  resolve(data);
+              }
+          };
 
-          resolve(data);
-        } 
-      };
-
-      this.socket.on(event, handler);
-    });
+          this.socket.on(event, handler);
+      });
   }
 
-  // loads and caches all live league data
+  // loads and caches all live league data at start
   async loadLeagues() {
     return new Promise((resolve) => {
       const channel = 'live.leaguesDiff';
@@ -86,24 +87,8 @@ class Bet105Client {
           resolve(data.payload);  
         }
       }
-      
       this.socket.on(channel, handler);
     }); 
-  }
-
-  // adds league to filter, subscribes to and returns array of event objects from given league
-  async addLeague(league, callback) {
-    const leagueId = this.getLeagueId(league);
-    const events = this.fetchEventsByLeague(this.eventData, leagueId);
-
-    // loop through live events of given league, subscribe and call callback
-    for (const event of events) {
-      this.subscribeToEvent(event.eventId, (odds) => {
-        callback(event, odds);
-      })
-    }
-
-    return events;
   }
 
   // function to lookup leagueIds
@@ -116,6 +101,17 @@ class Bet105Client {
     }
   }
 
+  // adds events of given league to event cache 
+  async addLeague(league) {
+    const leagueId = this.getLeagueId(league);
+
+    // keep track of leagues being monitored
+    this.selectedLeagues.push(league);
+
+    // adds events from given league to event cache
+    await this.fetchEventsByLeague(leagueId);
+  }
+
   // extracts odds data from given state
   extractOdds(eventId, state) {
     if (!state || !state.payload) {
@@ -123,6 +119,7 @@ class Bet105Client {
     }
 
     try {
+      // store ml market data from payload
       const mlMarket = state.payload.c?.m?.['3'];
       const matchData = state.payload.m;
 
@@ -217,12 +214,24 @@ class Bet105Client {
     }
   }
 
-  // subscribe to specific live sporting event 
-  subscribeToEvent(eventId, callback) {
-    const channel = `live.main.VEZBZ1VFbE9Ua0ZEVEVVZ1MwbENUQT09.eventCoefficients.${eventId}`;
+  // subscribes to each event in given events array
+  subscribeToEvents(callback) {
+    // loops through all events 
+    for (const event of this.events) {
 
-    // cache callback for this channel
-    this.eventCallbacks.set(channel, callback);
+      // verifies event hasn't already been subscribed to 
+      if (!this.subscribedEvents.has(event.eventId)) {
+        this.subscribedEvents.add(event.eventId);
+
+        // calls main subscribe function with callback
+        this.subscribeToEvent(event, callback);
+      }
+    }
+  }
+
+  // subscribe to specific live sporting event 
+  subscribeToEvent(event, callback) {
+    const channel = `live.main.VEZBZ1VFbE9Ua0ZEVEVVZ1MwbENUQT09.eventCoefficients.${event.eventId}`;
 
     this.socket.emit('subscribe', [{ roomName: channel }]);
 
@@ -235,9 +244,9 @@ class Bet105Client {
       const state = this.applyUpdate(channel, data);
       
       // extract odds from state and call callback on data
-      const odds = this.extractOdds(eventId, state);
+      const odds = this.extractOdds(event.eventId, state);
       if (odds) {
-        callback(odds);
+        callback(event, odds);
       }
     };
 
@@ -245,9 +254,31 @@ class Bet105Client {
     this.socket.on(channel, handler);
   }
 
+  // called periodically to cache any events that have started since program started running
+  async refreshEvents() {
+    // reset eventData cache to null
+    this.eventData = null;
+
+    // remove listeners from liveEvent channel
+    const event = "live.main.VEZBZ1VFbE9Ua0ZEVEVVZ1MwbENUQT09.eventData";
+    this.socket.removeAllListeners(event);
+
+    // cache new liveEventData
+    await this.getLiveEventData();
+
+    // adds all live events of selected leagues to event cache
+    for (const league of this.selectedLeagues) {
+      await this.fetchEventsByLeague(this.getLeagueId(league));
+    }
+  }
+
+  getEvents() {
+    return this.events;
+  }
+
   // returns live events of given league
-  fetchEventsByLeague(eventData, targetLeagueId) {
-    const events = [];
+  async fetchEventsByLeague(targetLeagueId) {
+    const eventData = await this.getLiveEventData();
     const sports = eventData.payload.s;
 
     // loop through eventData payload -- get to league events
@@ -258,20 +289,21 @@ class Bet105Client {
           if (leagueId === targetLeagueId) {
             // found league - extract eventData for all events 
             for (const [eventId, eventData] of Object.entries(leagueEvents)) {
-              events.push({
-                eventId,
-                homeTeam: eventData[0][0],  // full home team name
-                awayTeam: eventData[1][0],  // full away team name 
-                startTime: eventData[2],
-                status: eventData[12]
-              });
+              // check if event is already in cache, push event to cache if not
+              if (!this.events.some(e => e.eventId == eventId)) {
+                  this.events.push({
+                  eventId,
+                  homeTeam: eventData[0][0],  // full home team name
+                  awayTeam: eventData[1][0],  // full away team name 
+                  startTime: eventData[2],
+                  status: eventData[12]
+                });  
+              }
             }
           }
         }
       }
     }
-
-    return events;
   }
 
   // decompresses raw binary data received from websocket 
@@ -288,6 +320,7 @@ class Bet105Client {
     }
   }
 
+  // havent tested - not sure if needed
   disconnect() {
     if (this.socket) {
       this.socket.disconnect();

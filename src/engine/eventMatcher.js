@@ -88,12 +88,35 @@ class EventMatcher {
                 'Nebraska': 'NEB',
                 'Wisconsin': 'WIS',
                 'Illinois': 'ILL',
-
+                'USC': 'USC',
+                'Ohio State': 'OSU',
+                'Michigan': 'MICH',
+                'Northwestern': 'NW',
+                'Penn State': 'PSU',
+                'Washington': 'WASH',
+                'Iowa': 'IOWA',
+                'Maryland': 'MD',
+                'Michigan State': 'MSU',
+                'UCLA': 'UCLA',
+                'Minnesota': 'MINN',
+                'Indiana': 'IND',
 
                 // SEC
                 'Auburn': 'AUB',
                 'Arkansas': 'ARK',
                 'Vanderbilt': 'VAN',
+                'Tennessee': 'TENN',
+                'Mississippi St': 'MSST',
+                'Florida': 'FLA',
+                'Georgia': 'UGA', 
+                'Alabama': 'ALA',
+                'Ole Miss': 'MISS',
+                'LSU': 'LSU',
+                'Missouri': 'MIZZ',
+                'Texas A&M': 'TXAM',
+                'Kentucky': 'UK',
+                'South Carolina': 'SCAR',
+                'Texas': 'TEX',
 
                 // ACC
                 'North Carolina': 'UNC',
@@ -103,6 +126,14 @@ class EventMatcher {
                 'Duke': 'DUKE',
                 'Pittsburgh': 'PITT',
                 'Notre Dame': 'ND',
+                'Virginia Tech': 'VT',
+                'Clemson': 'CLEM',
+                'California': 'CAL',
+                'Syracuse': 'SYR',
+                'Wake Forest': 'WAKE',
+                'Georgia Tech': 'GT',
+                'SMU': 'SMU',
+                'Boston College': 'BC',
 
                 // BIG 12
                 'Baylor': 'BAY',
@@ -111,9 +142,50 @@ class EventMatcher {
                 'Oklahoma State': 'OKST',
                 'Arizona State': 'ASU',
                 'Iowa State': 'ISU',
-                'TCU': 'TCU'
+                'TCU': 'TCU',
+                'Cincinnati': 'CIN',
+                'Kansas State': 'KSU',
+                'Colorado': 'COLO',
+                'Texas Tech': 'TTU',
+                'UCF': 'UCF',
+                'BYU': 'BYU',
+                'West Virginia': 'WVU',
+                'Kansas': 'KU',
+                'Iowa State': 'ISU',
+                'Arizona': 'ARIZ',
+
+                // other (fill out as needed)
+                'Louisiana Tech': 'LT',
+                'Missouri State': 'MOSU',
+                'Memphis': 'MEM',
+                'North Texas': 'UNT',
+                'Oregon State': 'ORST',
+                'San Francisco': 'SF',
+                'Coastal Carolina': 'CCAR',
+                'UL Lafayette': 'ULL',
+                'Hawaii': 'HAW',
+                'CS Bakersfield': 'CSB',
+                'Yale': 'YALE',
+                'Dartmouth': 'DART',
+                'Ohio': 'OHIO',
+                'Miami Ohio': 'MOH',
+                'Massachussets': 'MASS',
+                'Akron': 'AKR',
+                'UNLV': 'UNLV',
+                'Boise State': 'BSU',
+                'Columbia': 'CLMB',
+                'Brown': 'BRWN',
+                'Harvard': 'HARV',
+                'Villanova': 'VILL',
+                'Creighton': 'CREI',
+                'Utah State': 'USU',
+                'Gonzaga': 'GONZ',
+                'Santa Clara': 'SCU',
+                'South Florida': 'USF',
+                'Florida Atlantic': 'FAU'
             },
 
+            // mens olympic hockey 
             WOMHOCKEY: {
                 'Finland': 'FIN',
                 'Slovakia': 'SVK',
@@ -132,19 +204,19 @@ class EventMatcher {
     }
 
     // main matcher function. builds map of games from each client 
-    async buildEvents(bet105Events, kalshiMarkets, league) {
+    buildEvents(bet105Events, tickers, league) {
         // find corresponding kalshiMarket for each bet105Event
         for (const event of bet105Events) {
-            const kalshiMatch = this.findKalshiMatch(event, kalshiMarkets, league);
+            const kalshiMatch = this.findKalshiMatch(event, tickers, league);
 
             // if kalshiMatch is found, create gameKey and set maps for 
             if (kalshiMatch) {
                 const gameKey = this.createGameKey(event);
-                const parsed = this.parseTicker(kalshiMatch.ticker);
+                const parsed = this.parseTicker(kalshiMatch);
 
                 // find both kalshi tickers associated with spcific market
-                const relatedTickers = kalshiMarkets.filter(m => m.ticker.includes(parsed.teams))
-                    .map(m => m.ticker);
+                const relatedTickers = tickers.filter(m => m.includes(parsed.teams))
+                    .map(m => m);
 
                 // set gamekey for bet105 map
                 this.gamesByBet105Id.set(String(event.eventId), gameKey);
@@ -172,27 +244,17 @@ class EventMatcher {
     }
 
     // finds corresponding kalshi match for a given bet105 event
-    findKalshiMatch(bet105Event, kalshiMarkets, league) {
+    findKalshiMatch(bet105Event, tickers, league) {
         // convert bet105 home and away teams to abbreviations to be checked against kalshiTickers
         const home = this.getAbbreviation(bet105Event.homeTeam, league);
         const away = this.getAbbreviation(bet105Event.awayTeam, league);
 
-        // both blocks of code below should do the same thing -- test to see which is more effecient
-
-        // return kalshi market that satisfies condition: contains both home and away team abbreviations 
-        // return kalshiMarkets.find(market => {
-        //     console.log(market.ticker);
-        //     const parsed = this.parseTicker(market.ticker);
-        //     console.log(parsed);
-        //     return parsed.teams.includes(home) && parsed.teams.includes(away);
-        // });
-
         // loop through kalshiMarkets, parse the tickers and check whether both home and away abbreviations are included in ticker 
-        for (const market of kalshiMarkets) {
-            const parsed = this.parseTicker(market.ticker);
+        for (const ticker of tickers) {
+            const parsed = this.parseTicker(ticker);
 
             if (parsed.teams.includes(home) && parsed.teams.includes(away)) {
-                return market;
+                return ticker;
             }
         }
     }
