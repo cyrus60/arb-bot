@@ -100,6 +100,8 @@ class EventMatcher {
                 'UCLA': 'UCLA',
                 'Minnesota': 'MINN',
                 'Indiana': 'IND',
+                'Oregon': 'ORE',
+                'Rutgers': 'RUTG',
 
                 // SEC
                 'Auburn': 'AUB',
@@ -117,6 +119,8 @@ class EventMatcher {
                 'Kentucky': 'UK',
                 'South Carolina': 'SCAR',
                 'Texas': 'TEX',
+                'Oklahoma': 'OKLA',
+
 
                 // ACC
                 'North Carolina': 'UNC',
@@ -134,6 +138,8 @@ class EventMatcher {
                 'Georgia Tech': 'GT',
                 'SMU': 'SMU',
                 'Boston College': 'BC',
+                'Stanford': 'STAN',
+                'Louisville': 'LOU',
 
                 // BIG 12
                 'Baylor': 'BAY',
@@ -151,7 +157,6 @@ class EventMatcher {
                 'BYU': 'BYU',
                 'West Virginia': 'WVU',
                 'Kansas': 'KU',
-                'Iowa State': 'ISU',
                 'Arizona': 'ARIZ',
 
                 // other (fill out as needed)
@@ -182,7 +187,15 @@ class EventMatcher {
                 'Gonzaga': 'GONZ',
                 'Santa Clara': 'SCU',
                 'South Florida': 'USF',
-                'Florida Atlantic': 'FAU'
+                'Florida Atlantic': 'FAU',
+                'Drexel': 'DREX',
+                'Stony Brook': 'STON',
+                'Albine Christian': 'AC',
+                'Tarleton St': 'TARL',
+                'Old Dominion': 'ODU',
+                'Colgate': 'COLG',
+                
+
             },
 
             // mens olympic hockey 
