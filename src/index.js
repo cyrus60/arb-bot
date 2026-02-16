@@ -21,11 +21,37 @@ async function main() {
     // instantiate clients
     const bet105 = new Bet105Client();
     const kalshi = new KalshiClient(kalshiAPIKey, pathToPrivKey);
-
     const matcher = new EventMatcher();
-    const finder =  new ArbDetector(matcher);
 
+    // tracks which leagues are currently monitored
     const activeLeagues = [];
+
+    // starting args
+    const args = process.argv.slice(2);
+
+    let stake;
+    let threshold;
+
+    // loop through args and set vars accordingly
+    for (let i = 0; i < args.length; i++) {
+        if (args[i] === '--league') {
+            activeLeagues.push(args[i + 1]);
+            i++;
+        }
+
+        if (args[i] === '--stake') {
+            stake = parseInt(args[i + 1]);
+            i++;
+        }
+
+        if (args [i] === '--threshold') {
+            threshold = parseFloat(args[i + 1]);
+            i++;
+        }
+    }
+
+    // instantiate arbDetector with stake and threshold args 
+    const finder = new ArbDetector(matcher, threshold, stake);
 
     // callback function for bet105 odds update
     const onBet105Update = (event, odds) => {
@@ -45,7 +71,7 @@ async function main() {
         }
     }
 
-    // adds league to each client
+    // adds league to each client -- used for live league adding
     const addLeague = async (kalshiLeague) => {
         await bet105.addLeague(leagueMap[kalshiLeague]);
         await kalshi.addLeague(`KX${kalshiLeague}GAME`);
@@ -53,9 +79,8 @@ async function main() {
         activeLeagues.push(kalshiLeague);
     }
 
-    // builds events via matcher, subscribes to events with each client
     const buildAndSubscribe = () => {
-        // loop through curren activeLeagues -> build events and subscribe
+        // loop through current activeLeagues -> build events and subscribe
         for (const league of activeLeagues) {
             matcher.buildEvents(bet105.getEvents(), kalshi.getTickers(), league);
 
@@ -68,8 +93,11 @@ async function main() {
     await bet105.start();
     await kalshi.start();
 
-    // adds league to both clients 
-    await addLeague('NCAAMB');
+    // add leagues to each client at start
+    for (const league of activeLeagues) {
+        await bet105.addLeague(leagueMap[league]);
+        await kalshi.addLeague(`KX${league}GAME`);
+    }
 
     // build events with matcher and subscribe to ws updates
     buildAndSubscribe();

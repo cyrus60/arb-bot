@@ -1,6 +1,12 @@
 class ArbDetector {
-    constructor(matcher) {
+    constructor(matcher, profitThreshold = 1.5, totalStake = 1000) {
         this.matcher = matcher;
+
+        // dont't display arbs with profitPct lower than threshold
+        this.profitThreshold = profitThreshold;
+
+        // total stake used to calculate $ amount for each side of arb as well as profit 
+        this.totalStake = totalStake;
 
         // mapping stores game odds under corresponding gameKey
         this.odds = new Map();
@@ -86,7 +92,7 @@ class ArbDetector {
             const arbKey = `${gameKey}-opt1`;
 
             if (!this.activeArbs.has(arbKey)) {
-                const arb = this.calculateStakes((100 / odds.kalshi.home), odds.bet105.away, gameInfo, 'KALSHI', gameInfo.homeTeam, 'BET105', gameInfo.awayTeam);
+                const arb = this.calculateStakes((100 / odds.kalshi.home), odds.bet105.away, gameInfo, 'KALSHI', gameInfo.homeTeam, 'BET105', gameInfo.awayTeam, this.totalStake);
 
                 // check kalshi liquidity 
                 const kalshiStake = parseFloat(arb.platform1 === 'KALSHI' ? arb.stake1 : arb.stake2);
@@ -97,6 +103,9 @@ class ArbDetector {
                     console.log(`Low liquidity: need $${kalshiStake}, have $${liquidity}`);
                     return;
                 }
+
+                // skip arb if below profitPct threshold
+                if (parseFloat(arb.profitPct) < this.profitThreshold) { return; }
 
                 arb.startTime = now;
                 arb.arbKey = arbKey;
@@ -110,7 +119,10 @@ class ArbDetector {
             const arbKey = `${gameKey}-opt2`;
             
             if (!this.activeArbs.has(arbKey)) {
-                const arb = this.calculateStakes(odds.bet105.home, (100 / odds.kalshi.away), gameInfo, 'BET105', gameInfo.homeTeam, 'KALSHI', gameInfo.awayTeam);
+                const arb = this.calculateStakes(odds.bet105.home, (100 / odds.kalshi.away), gameInfo, 'BET105', gameInfo.homeTeam, 'KALSHI', gameInfo.awayTeam, this.totalStake);
+
+                // skip arb if below profitPct threshold
+                if (parseFloat(arb.profitPct) < this.profitThreshold) { return; }
 
                 arb.startTime = now;
                 arb.arbKey = arbKey;
@@ -124,7 +136,7 @@ class ArbDetector {
     }
 
     // calculates stake for each side of arb as well as profit and profit %
-    calculateStakes(odds1, odds2, gameInfo, platform1, team1, platform2, team2, totalStake = 1000) {
+    calculateStakes(odds1, odds2, gameInfo, platform1, team1, platform2, team2, totalStake) {
         const prob1 = 1 / odds1;
         const prob2 = 1 / odds2;
         const totalProb = prob1 + prob2;
@@ -144,7 +156,7 @@ class ArbDetector {
             team1,
             stake1: stake1.toFixed(2),
             odds1: odds1.toFixed(2),
-            // set display odds based on platforms 
+            // set display odds based on platform
             odds1Display: platform1 === 'KALSHI'
                 ? Math.round(100 / odds1) + '¢'
                 : this.decimalToAmerican(odds1),
