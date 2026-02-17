@@ -34,7 +34,7 @@ Unfortunately, as of now, a Kalshi account is required to run the program. Fortu
 ```bash
 node src/index.js --league NBA --threshold 2.5 --stake 1000
 ```
-- Note: Ensure there are live events in progress for given leagues in order for the scanner to work properly. If no events are found, the scanner refreshes for new live events every 10 minutes and will monitor them as they begin. 
+> **Note:** Ensure there are live events in progress for given leagues in order for the scanner to work properly. If no events are found, the scanner refreshes for new live events every 10 minutes and will monitor them as they begin. 
 
 ### Flags
 | Flag | Required | Description | Default |
