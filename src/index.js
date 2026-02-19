@@ -1,8 +1,8 @@
 const Bet105Client = require('./clients/bet105');
 const KalshiClient = require('./clients/kalshi');
 const EventMatcher = require('./engine/eventMatcher');
-const ArbDetector = require('./engine/arbDetector');
-// const ArbDetector =  require('./engine/arbDetectorTest');
+// const ArbDetector = require('./engine/arbDetector');
+const ArbDetector =  require('./engine/arbDetectorLog');
 require('dotenv').config();
 
 const kalshiAPIKey = process.env.KALSHI_API_KEY;
@@ -107,7 +107,7 @@ async function main() {
         await bet105.refreshEvents();
 
         buildAndSubscribe();
-    }, 10 * 60 * 1000);
+    }, 5 * 60 * 1000);
 }
 
 main();

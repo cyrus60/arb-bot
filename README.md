@@ -49,4 +49,6 @@ node src/index.js --league NBA --league NCAAMB --stake 1000 --threshold 1.5
 ```
 
 ## Future plans
-In the near future, I plan to continue work on this project and implement a clean, dynamic frontend dashboard for displaying arbs and even logging/storing data for each discovered arb. Will also continue to expand support for more leagues and teams.
+- Implement clean, dynamic frontend dashboard for displaying arbs 
+- Implmenent support for spread and total markets
+- Expand support for more leagues and teams
