@@ -106,6 +106,9 @@ class KalshiClient {
     // handler function for websocket messages
     handleMessage(data) {
         const msg = JSON.parse(data);
+
+        if (!msg.msg) return;
+
         const ticker = msg.msg.market_ticker;
 
         // hnadles ticker messages - if ticker is of a league filter, cache it for use later

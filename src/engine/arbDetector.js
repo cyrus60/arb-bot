@@ -19,7 +19,16 @@ class ArbDetector {
     onBet105Update(eventOdds, gameKey) {
         if (!gameKey) return;
         
-        if (!eventOdds || !eventOdds?.o) {
+        if (!eventOdds?.odds) {
+            const existing = this.getOdds(gameKey) || {};
+            this.odds.set(gameKey, {
+                ...existing,
+                bet105: {
+                    home: undefined,
+                    away: undefined
+                }
+            })
+
             this.activeArbs.delete(`${gameKey}-opt1`);
             this.activeArbs.delete(`${gameKey}-opt2`);
             this.displayArbs();
@@ -82,6 +91,9 @@ class ArbDetector {
         // if there are no odds for any side of event, return 
         if (!odds?.bet105?.home || !odds?.bet105?.away ||
             !odds?.kalshi?.home || !odds?.kalshi?.away) {
+                this.activeArbs.delete(`${gameKey}-opt1`);
+                this.activeArbs.delete(`${gameKey}-opt2`);
+
                 this.displayArbs();
                 return;
         }
@@ -97,44 +109,42 @@ class ArbDetector {
         // if implied probability for either variation is less than one, cache arb in activeArb cache and display arbs 
         if (impliedProb1 < 1) {
             const arbKey = `${gameKey}-opt1`;
+            const arb = this.calculateStakes((100 / odds.kalshi.home), odds.bet105.away, gameInfo, 'KALSHI', gameInfo.homeTeam, 'BET105', gameInfo.awayTeam, this.totalStake);
 
-            if (!this.activeArbs.has(arbKey)) {
-                const arb = this.calculateStakes((100 / odds.kalshi.home), odds.bet105.away, gameInfo, 'KALSHI', gameInfo.homeTeam, 'BET105', gameInfo.awayTeam, this.totalStake);
+            // check kalshi liquidity 
+            const kalshiStake = parseFloat(arb.stake1);
+            const liquidity = odds.kalshi.homeLiquidity;
 
-                // check kalshi liquidity 
-                const kalshiStake = parseFloat(arb.platform1 === 'KALSHI' ? arb.stake1 : arb.stake2);
-                const liquidity = arb.platform1 === 'KALSHI' ? odds.kalshi.homeLiquidity : odds.kalshi.awayLiquidity;
+            // skip arb if not enough liquidity
+            if (kalshiStake > liquidity || parseFloat(arb.profitPct) < this.profitThreshold) {
+                this.displayArbs();
+                return;
+            }
 
-                // skip arb if not enough liquidity
-                if (kalshiStake > liquidity) {
-                    // console.log(`Low liquidity: need $${kalshiStake}, have $${liquidity}`);
-                    return;
-                }
-
-                // skip arb if below profitPct threshold
-                if (parseFloat(arb.profitPct) < this.profitThreshold) { return; }
-
-                arb.startTime = now;
-                arb.arbKey = arbKey;
-                this.activeArbs.set(arbKey, arb);
-            } 
+            arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
+            arb.arbKey = arbKey;
+            this.activeArbs.set(arbKey, arb);
         } else {
             this.activeArbs.delete(`${gameKey}-opt1`);
         }
 
         if (impliedProb2 < 1) {
             const arbKey = `${gameKey}-opt2`;
-            
-            if (!this.activeArbs.has(arbKey)) {
-                const arb = this.calculateStakes(odds.bet105.home, (100 / odds.kalshi.away), gameInfo, 'BET105', gameInfo.homeTeam, 'KALSHI', gameInfo.awayTeam, this.totalStake);
+            const arb = this.calculateStakes(odds.bet105.home, (100 / odds.kalshi.away), gameInfo, 'BET105', gameInfo.homeTeam, 'KALSHI', gameInfo.awayTeam, this.totalStake);
 
-                // skip arb if below profitPct threshold
-                if (parseFloat(arb.profitPct) < this.profitThreshold) { return; }
+            // check kalshi liquidity 
+            const kalshiStake = parseFloat(arb.stake2);
+            const liquidity = odds.kalshi.awayLiquidity;
 
-                arb.startTime = now;
-                arb.arbKey = arbKey;
-                this.activeArbs.set(arbKey, arb);
+            // skip arb if not enough liquidity
+            if (kalshiStake > liquidity || parseFloat(arb.profitPct) < this.profitThreshold) {
+                this.displayArbs();
+                return;
             }
+
+            arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
+            arb.arbKey = arbKey;
+            this.activeArbs.set(arbKey, arb);
         } else {
             this.activeArbs.delete(`${gameKey}-opt2`);
         }

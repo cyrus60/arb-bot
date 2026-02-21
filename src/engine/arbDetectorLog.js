@@ -6,7 +6,7 @@ class ArbDetectorTest {
         this.odds = new Map();
         this.activeArbs = new Map();
         this.arbLog = [];
-        this.logFile = 'arb-log.json';
+        this.logFile = 'arb-log2.json';
         // dont't display arbs with profitPct lower than threshold
         this.profitThreshold = profitThreshold;
 
@@ -18,9 +18,19 @@ class ArbDetectorTest {
         if (!gameKey) return;
 
         // handle suspended bet105 markets
-        if (!eventOdds || !eventOdds?.odds) {
-            this.activeArbs.delete(`${gameKey}-opt1`);
-            this.activeArbs.delete(`${gameKey}-opt2`);
+        if (!eventOdds?.odds) {
+            // clear stale odds
+            const existing = this.getOdds(gameKey) || {};
+            this.odds.set(gameKey, {
+                ...existing,
+                bet105: {
+                    home: undefined,
+                    away: undefined
+                }
+            })
+
+            this.closeArb(`${gameKey}-opt1`);
+            this.closeArb(`${gameKey}-opt2`);
             this.displayArbs();
             return;
         }
@@ -65,8 +75,12 @@ class ArbDetectorTest {
         const odds = this.getOdds(gameKey);
         const gameInfo = this.matcher.getGameInfo(gameKey);
 
+        // remove from active arbs if any odds are undefined (think solved hanging arb issue)
         if (!odds?.bet105?.home || !odds?.bet105?.away ||
             !odds?.kalshi?.home || !odds?.kalshi?.away) {
+            this.closeArb(`${gameKey}-opt1`);
+            this.closeArb(`${gameKey}-opt2`);
+
             this.displayArbs();
             return;
         }
@@ -77,46 +91,50 @@ class ArbDetectorTest {
 
         if (impliedProb1 < 1) {
             const arbKey = `${gameKey}-opt1`;
-            if (!this.activeArbs.has(arbKey)) {
-                const arb = this.calculateStakes(
+            const arb = this.calculateStakes(
                     (100 / odds.kalshi.home), odds.bet105.away, gameInfo,
                     'KALSHI', gameInfo.homeTeam, 'BET105', gameInfo.awayTeam, this.totalStake
                 );
 
                 // check kalshi liquidity 
-                const kalshiStake = parseFloat(arb.platform1 === 'KALSHI' ? arb.stake1 : arb.stake2);
-                const liquidity = arb.platform1 === 'KALSHI' ? odds.kalshi.homeLiquidity : odds.kalshi.awayLiquidity;
+                const kalshiStake = parseFloat(arb.stake1);
+                const liquidity = odds.kalshi.homeLiquidity;
 
                 // skip arb if not enough liquidity
-                if (kalshiStake > liquidity) {
-                    console.log(`Low liquidity: need $${kalshiStake}, have $${liquidity}`);
+                if (kalshiStake > liquidity || parseFloat(arb.profitPct) < this.profitThreshold) {
+                    this.closeArb(arbKey);
+                    this.displayArbs();
                     return;
                 }
 
-                if (parseFloat(arb.profitPct) < this.profitThreshold) { return; }
-
-                arb.startTime = now;
+                arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
                 arb.arbKey = arbKey;
                 this.activeArbs.set(arbKey, arb);
-            }
         } else {
             this.closeArb(`${gameKey}-opt1`);
         }
 
         if (impliedProb2 < 1) {
             const arbKey = `${gameKey}-opt2`;
-            if (!this.activeArbs.has(arbKey)) {
-                const arb = this.calculateStakes(
-                    odds.bet105.home, (100 / odds.kalshi.away), gameInfo,
-                    'BET105', gameInfo.homeTeam, 'KALSHI', gameInfo.awayTeam, this.totalStake
-                );
+            const arb = this.calculateStakes(
+                odds.bet105.home, (100 / odds.kalshi.away), gameInfo,
+                'BET105', gameInfo.homeTeam, 'KALSHI', gameInfo.awayTeam, this.totalStake
+            );
 
-                if (parseFloat(arb.profitPct) < this.profitThreshold) { return; }
+            // check kalshi liquidity 
+            const kalshiStake = parseFloat(arb.stake2);
+            const liquidity = odds.kalshi.awayLiquidity;
 
-                arb.startTime = now;
-                arb.arbKey = arbKey;
-                this.activeArbs.set(arbKey, arb);
+            // skip arb if not enough liquidity
+            if (kalshiStake > liquidity || parseFloat(arb.profitPct) < this.profitThreshold) {
+                this.closeArb(arbKey);
+                this.displayArbs();
+                return;
             }
+
+            arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
+            arb.arbKey = arbKey;
+            this.activeArbs.set(arbKey, arb);
         } else {
             this.closeArb(`${gameKey}-opt2`);
         }
@@ -177,8 +195,6 @@ class ArbDetectorTest {
         console.clear();
         console.log('========= ARB MONITOR =========');
         console.log(`Active arbs: ${this.activeArbs.size} | Logged: ${this.arbLog.length}`);
-        console.log('');
-        console.log(this.matcher.games.size);
         console.log('');
 
         if (this.activeArbs.size === 0) {

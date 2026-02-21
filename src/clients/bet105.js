@@ -170,16 +170,16 @@ class Bet105Client {
       obj[keys[keys.length - 1]] = value;
 
     } else if (op === 'remove') {
-      let obj = state;
+        let obj = state;
 
-      for (let i = 0; i < keys.length; i++) {
-        obj = obj[keys[i]];
+        for (let i = 0; i < keys.length - 1; i++) {
+          obj = obj[keys[i]];
 
-        if (!obj) {
-          return state;
+          if (!obj) {
+            return state;
+          }
         }
-      }
-      delete obj[keys[keys.length - 1]];
+        delete obj[keys[keys.length - 1]];
     }
 
     return state;
@@ -245,9 +245,7 @@ class Bet105Client {
       
       // extract odds from state and call callback on data
       const odds = this.extractOdds(event.eventId, state);
-      if (odds) {
-        callback(event, odds);
-      }
+      callback(event, odds);
     };
 
     // call handler on any message for channel
