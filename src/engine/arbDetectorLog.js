@@ -75,7 +75,7 @@ class ArbDetectorTest {
         const odds = this.getOdds(gameKey);
         const gameInfo = this.matcher.getGameInfo(gameKey);
 
-        // remove from active arbs if any odds are undefined (think solved hanging arb issue)
+        // remove from active arbs if any odds are undefined 
         if (!odds?.bet105?.home || !odds?.bet105?.away ||
             !odds?.kalshi?.home || !odds?.kalshi?.away) {
             this.closeArb(`${gameKey}-opt1`);
@@ -196,6 +196,8 @@ class ArbDetectorTest {
         console.log('========= ARB MONITOR =========');
         console.log(`Active arbs: ${this.activeArbs.size} | Logged: ${this.arbLog.length}`);
         console.log('');
+        // console.log(this.matcher.games.size);
+        // console.log();
 
         if (this.activeArbs.size === 0) {
             console.log('No arbs detected. Monitoring...');

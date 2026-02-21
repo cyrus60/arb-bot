@@ -19,8 +19,11 @@ class ArbDetector {
     onBet105Update(eventOdds, gameKey) {
         if (!gameKey) return;
         
+        // check for suspended bet105 markets
         if (!eventOdds?.odds) {
             const existing = this.getOdds(gameKey) || {};
+
+            // set bet105 odds as undefinded if odds do not exist
             this.odds.set(gameKey, {
                 ...existing,
                 bet105: {
@@ -59,7 +62,6 @@ class ArbDetector {
         // retrieve eventInfo of event stored under gameKey
         const gameInfo = this.matcher.getGameInfo(gameKey);
 
-        // get 3 char abbreviation for home team of event(gameKey)
         const homeAbbrev = this.matcher.getAbbreviation(gameInfo.homeTeam, league);
 
         // evals to true if winning team of marketOdds ws update matches winning team stored in gameKey map
@@ -88,7 +90,7 @@ class ArbDetector {
         const odds = this.getOdds(gameKey);
         const gameInfo = this.matcher.getGameInfo(gameKey);
 
-        // if there are no odds for any side of event, return 
+        // if there are no odds for any side of event, remove arb from active arbs, display and return
         if (!odds?.bet105?.home || !odds?.bet105?.away ||
             !odds?.kalshi?.home || !odds?.kalshi?.away) {
                 this.activeArbs.delete(`${gameKey}-opt1`);
@@ -100,13 +102,10 @@ class ArbDetector {
 
         const now = Date.now();
 
-        // first variation - kalshi home + bet105 away
+        // calculate implied probability for both possible wl scenarios on each platform
         const impliedProb1 = (1 / (100 / (odds.kalshi.home)) + (1 / odds.bet105.away));
-
-        // second variation - bet105 home + kalshi away
         const impliedProb2 = (1 / odds.bet105.home) + (1 / (100 / odds.kalshi.away));
 
-        // if implied probability for either variation is less than one, cache arb in activeArb cache and display arbs 
         if (impliedProb1 < 1) {
             const arbKey = `${gameKey}-opt1`;
             const arb = this.calculateStakes((100 / odds.kalshi.home), odds.bet105.away, gameInfo, 'KALSHI', gameInfo.homeTeam, 'BET105', gameInfo.awayTeam, this.totalStake);
@@ -115,7 +114,7 @@ class ArbDetector {
             const kalshiStake = parseFloat(arb.stake1);
             const liquidity = odds.kalshi.homeLiquidity;
 
-            // skip arb if not enough liquidity
+            // skip arb if not enough kalshi liquidity or profit threshold is not met
             if (kalshiStake > liquidity || parseFloat(arb.profitPct) < this.profitThreshold) {
                 this.displayArbs();
                 return;
@@ -124,7 +123,7 @@ class ArbDetector {
             arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
             arb.arbKey = arbKey;
             this.activeArbs.set(arbKey, arb);
-        } else {
+        } else { // remove arb from activeArbs if implied probability exceeds one
             this.activeArbs.delete(`${gameKey}-opt1`);
         }
 
@@ -136,7 +135,7 @@ class ArbDetector {
             const kalshiStake = parseFloat(arb.stake2);
             const liquidity = odds.kalshi.awayLiquidity;
 
-            // skip arb if not enough liquidity
+            // skip arb if not enough kalshi liquidity or profit threshold is not met
             if (kalshiStake > liquidity || parseFloat(arb.profitPct) < this.profitThreshold) {
                 this.displayArbs();
                 return;
@@ -145,7 +144,7 @@ class ArbDetector {
             arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
             arb.arbKey = arbKey;
             this.activeArbs.set(arbKey, arb);
-        } else {
+        } else { // remove arb from activeArbs if implied probability exceeds one
             this.activeArbs.delete(`${gameKey}-opt2`);
         }
 

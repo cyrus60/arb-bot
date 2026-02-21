@@ -181,7 +181,7 @@ class KalshiClient {
         })
     }
 
-    // add league to filter, waits for markets to populate cache, and returns markets for given leagues
+    // add league to filter, waits for ticker data to populate cache
     async addLeague(league) {
         if (!this.leagues.includes(league)) {
             this.leagues.push(league);
