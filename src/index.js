@@ -67,7 +67,7 @@ async function main() {
         const gameKey = matcher.getGameKeyFromTicker(update.ticker);
                 
         if (gameKey) {
-            finder.onKalshiUpdate(update, gameKey, matcher.getLeagueFromTicker(update.ticker));
+            finder.onKalshiUpdate(update, gameKey, matcher.getGameInfo(gameKey).league);
         }
     }
 
@@ -80,13 +80,14 @@ async function main() {
     }
 
     const buildAndSubscribe = () => {
-        // loop through current activeLeagues -> build events and subscribe
+        // loop through current activeLeagues -> build events for each
         for (const league of activeLeagues) {
             matcher.buildEvents(bet105.getEvents(), kalshi.getTickers(), league);
-
-            bet105.subscribeToEvents(onBet105Update);
-            kalshi.subscribe(onKalshiUpdate);
         }
+
+        // subscribe to all events 
+        bet105.subscribeToEvents(onBet105Update);
+        kalshi.subscribe(onKalshiUpdate);
     }
 
     // start clients 
@@ -102,12 +103,12 @@ async function main() {
     // build events with matcher and subscribe to ws updates
     buildAndSubscribe();
 
-    // refresh liveEvents for bet105 every 10 minutes
-    setInterval(async () => {
-        await bet105.refreshEvents();
+    // refresh liveEvents for bet105 every 10 minutes -- DEBUG
+    // setInterval(async () => {
+    //     await bet105.refreshEvents();
 
-        buildAndSubscribe();
-    }, 5 * 60 * 1000);
+    //     buildAndSubscribe();
+    // }, 5 * 60 * 1000);
 }
 
 main();

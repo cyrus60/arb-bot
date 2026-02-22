@@ -18,12 +18,14 @@ class ArbDetector {
     // function called every time there is an odds update on a bet105Event
     onBet105Update(eventOdds, gameKey) {
         if (!gameKey) return;
-        
-        // check for suspended bet105 markets
-        if (!eventOdds?.odds) {
-            const existing = this.getOdds(gameKey) || {};
 
-            // set bet105 odds as undefinded if odds do not exist
+        // store existing odds in given gameKey or empty obj if none
+        const existing = this.getOdds(gameKey) || {};
+
+        // handle suspended bet105 markets
+        if (!eventOdds?.odds) {
+
+            // odds don't exist, update odds map of event accordingly
             this.odds.set(gameKey, {
                 ...existing,
                 bet105: {
@@ -32,24 +34,25 @@ class ArbDetector {
                 }
             })
 
+            // clear from activeArbs 
             this.activeArbs.delete(`${gameKey}-opt1`);
             this.activeArbs.delete(`${gameKey}-opt2`);
             this.displayArbs();
             return;
         }
 
-        // check if there are already odds for kalshi key in map -- set as empty obj if not
-        const existing = this.getOdds(gameKey) || {};
+        // if game stored under gamekey is of league NCAAMB, apply necessarry odds padding 
+        const gameInfo = this.matcher.getGameInfo(gameKey);
+        const adjustment = gameInfo?.league === 'NCAAMB' ? 0.9954 : 1.0;
 
         this.odds.set(gameKey, {
-            ...existing, 
+            ...existing,
             bet105: {
-                home: eventOdds.odds.home,
-                away: eventOdds.odds.away
+                home: eventOdds.odds.home * adjustment,
+                away: eventOdds.odds.away * adjustment
             }
         });
 
-        // call checkArb function after setting new odds update in mapping
         this.checkArbitrage(gameKey);
     }
 
@@ -117,12 +120,11 @@ class ArbDetector {
             // skip arb if not enough kalshi liquidity or profit threshold is not met
             if (kalshiStake > liquidity || parseFloat(arb.profitPct) < this.profitThreshold) {
                 this.displayArbs();
-                return;
+            } else {
+                arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
+                arb.arbKey = arbKey;
+                this.activeArbs.set(arbKey, arb);
             }
-
-            arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
-            arb.arbKey = arbKey;
-            this.activeArbs.set(arbKey, arb);
         } else { // remove arb from activeArbs if implied probability exceeds one
             this.activeArbs.delete(`${gameKey}-opt1`);
         }
@@ -138,12 +140,11 @@ class ArbDetector {
             // skip arb if not enough kalshi liquidity or profit threshold is not met
             if (kalshiStake > liquidity || parseFloat(arb.profitPct) < this.profitThreshold) {
                 this.displayArbs();
-                return;
+            } else {
+                arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
+                arb.arbKey = arbKey;
+                this.activeArbs.set(arbKey, arb);
             }
-
-            arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
-            arb.arbKey = arbKey;
-            this.activeArbs.set(arbKey, arb);
         } else { // remove arb from activeArbs if implied probability exceeds one
             this.activeArbs.delete(`${gameKey}-opt2`);
         }

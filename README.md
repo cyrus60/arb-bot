@@ -50,5 +50,6 @@ node src/index.js --league NBA --league NCAAMB --stake 1000 --threshold 1.5
 
 ## Future plans
 - Implement clean, dynamic frontend dashboard for displaying arbs 
+- Potentially incorporate Polymarket as another platform to scan for live arbs
 - Implmenent support for spread and total markets
 - Expand support for more leagues and teams

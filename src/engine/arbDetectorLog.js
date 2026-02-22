@@ -6,7 +6,7 @@ class ArbDetectorTest {
         this.odds = new Map();
         this.activeArbs = new Map();
         this.arbLog = [];
-        this.logFile = 'arb-log2.json';
+        this.logFile = 'arb-log3.json';
         // dont't display arbs with profitPct lower than threshold
         this.profitThreshold = profitThreshold;
 
@@ -17,10 +17,13 @@ class ArbDetectorTest {
     onBet105Update(eventOdds, gameKey) {
         if (!gameKey) return;
 
+        // store existing odds in given gameKey or empty obj if none
+        const existing = this.getOdds(gameKey) || {};
+
         // handle suspended bet105 markets
         if (!eventOdds?.odds) {
-            // clear stale odds
-            const existing = this.getOdds(gameKey) || {};
+
+            // odds don't exist, update odds map of event accordingly
             this.odds.set(gameKey, {
                 ...existing,
                 bet105: {
@@ -29,19 +32,22 @@ class ArbDetectorTest {
                 }
             })
 
+            // clear from activeArbs 
             this.closeArb(`${gameKey}-opt1`);
             this.closeArb(`${gameKey}-opt2`);
             this.displayArbs();
             return;
         }
 
-        const existing = this.getOdds(gameKey) || {};
+        // if game stored under gamekey is of league NCAAMB, apply necessarry odds padding 
+        const gameInfo = this.matcher.getGameInfo(gameKey);
+        const adjustment = gameInfo?.league === 'NCAAMB' ? 0.9954 : 1.0;
 
         this.odds.set(gameKey, {
             ...existing,
             bet105: {
-                home: eventOdds.odds.home,
-                away: eventOdds.odds.away
+                home: eventOdds.odds.home * adjustment,
+                away: eventOdds.odds.away * adjustment
             }
         });
 
@@ -92,24 +98,22 @@ class ArbDetectorTest {
         if (impliedProb1 < 1) {
             const arbKey = `${gameKey}-opt1`;
             const arb = this.calculateStakes(
-                    (100 / odds.kalshi.home), odds.bet105.away, gameInfo,
-                    'KALSHI', gameInfo.homeTeam, 'BET105', gameInfo.awayTeam, this.totalStake
-                );
+                (100 / odds.kalshi.home), odds.bet105.away, gameInfo,
+                'KALSHI', gameInfo.homeTeam, 'BET105', gameInfo.awayTeam, this.totalStake
+            );
 
-                // check kalshi liquidity 
-                const kalshiStake = parseFloat(arb.stake1);
-                const liquidity = odds.kalshi.homeLiquidity;
+            // check kalshi liquidity 
+            const kalshiStake = parseFloat(arb.stake1);
+            const liquidity = odds.kalshi.homeLiquidity;
 
-                // skip arb if not enough liquidity
-                if (kalshiStake > liquidity || parseFloat(arb.profitPct) < this.profitThreshold) {
-                    this.closeArb(arbKey);
-                    this.displayArbs();
-                    return;
-                }
-
+            // skip arb if not enough liquidity
+            if (kalshiStake > liquidity || parseFloat(arb.profitPct) < this.profitThreshold) {
+                this.closeArb(arbKey);
+            } else {
                 arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
                 arb.arbKey = arbKey;
                 this.activeArbs.set(arbKey, arb);
+            }
         } else {
             this.closeArb(`${gameKey}-opt1`);
         }
@@ -128,13 +132,11 @@ class ArbDetectorTest {
             // skip arb if not enough liquidity
             if (kalshiStake > liquidity || parseFloat(arb.profitPct) < this.profitThreshold) {
                 this.closeArb(arbKey);
-                this.displayArbs();
-                return;
+            } else {
+                arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
+                arb.arbKey = arbKey;
+                this.activeArbs.set(arbKey, arb);
             }
-
-            arb.startTime = this.activeArbs.has(arbKey) ? this.activeArbs.get(arbKey).startTime : now;
-            arb.arbKey = arbKey;
-            this.activeArbs.set(arbKey, arb);
         } else {
             this.closeArb(`${gameKey}-opt2`);
         }

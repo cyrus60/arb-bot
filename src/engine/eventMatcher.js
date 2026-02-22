@@ -5,7 +5,7 @@ class EventMatcher {
         this.gamesByKalshiTicker = new Map();
         this.games = new Map();
 
-        // maps team abbreviations for each league to team name
+        // maps kalshi team abbreviations to bet105 team name for each league 
         this.teamMap = {
             NBA: {
                 'Atlanta Hawks': 'ATL',
@@ -233,22 +233,6 @@ class EventMatcher {
                 'Air Force': 'AFA',
                 'So Mississippi': 'USM',
             },
-
-            // mens olympic hockey 
-            WOMHOCKEY: {
-                'Finland': 'FIN',
-                'Slovakia': 'SVK',
-                'Italy': 'ITA',
-                'Sweden': 'SWE', 
-                'Latvia': 'LVA',
-                'USA': 'USA',
-                'Czech Republic': 'CZE',
-                'Canada': 'CAN',
-                'Switzerland': 'CHE',
-                'France': 'FRA',
-                'Denmark': 'DNK',
-                'Germany': 'DEU'
-            }
         };
     }
 
@@ -280,16 +264,11 @@ class EventMatcher {
                     bet105EventId: event.eventId,
                     kalshiTickers: relatedTickers,
                     homeTeam: event.homeTeam,
-                    awayTeam: event.awayTeam
+                    awayTeam: event.awayTeam,
+                    league: league
                 });
             }
         }
-    }
-
-
-    // return abbreviation for team
-    getAbbreviation(teamName, league) {
-        return this.teamMap[league]?.[teamName];
     }
 
     // finds corresponding kalshi match for a given bet105 event
@@ -318,17 +297,6 @@ class EventMatcher {
         };
     }
 
-    // returns league associated with kalshi ticker
-    getLeagueFromTicker(ticker) {
-        if (ticker.startsWith('KXNBAGAME')) return 'NBA';
-        if (ticker.startsWith('KXNHLGAME')) return 'NHL';
-        if (ticker.startsWith('KXNFLGAME')) return 'NFL';
-        if (ticker.startsWith('KXMLBGAME')) return 'MLB';
-        if (ticker.startsWith('KXNCAAMBGAME')) return 'NCAAMB';
-        if (ticker.startsWith('KXWOMHOCKEY')) return 'WOMHOCKEY';
-        return null;
-    }
-
     // creates game key from bet105 event 
     createGameKey(bet105Event) {
         return `${bet105Event.homeTeam}-${bet105Event.awayTeam}-${bet105Event.startTime}`;
@@ -347,6 +315,11 @@ class EventMatcher {
     // returns game information associated with gameKey
     getGameInfo(gameKey) {
         return this.games.get(gameKey);
+    }
+
+    // return abbreviation for team
+    getAbbreviation(teamName, league) {
+        return this.teamMap[league]?.[teamName];
     }
 }
 
