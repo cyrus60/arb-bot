@@ -1,12 +1,8 @@
 const Bet105Client = require('./clients/bet105');
-const KalshiClient = require('./clients/kalshi');
+const PolymarketClient = require('./clients/polymarket');
 const EventMatcher = require('./engine/eventMatcher');
 // const ArbDetector = require('./engine/arbDetector');
 const ArbDetector =  require('./engine/arbDetectorLog');
-require('dotenv').config();
-
-const kalshiAPIKey = process.env.KALSHI_API_KEY;
-const pathToPrivKey = process.env.KALSHI_KEY_PATH;
 
 // map of kalshi league abbreviations to bet105 league names
 const leagueMap = {
@@ -20,7 +16,7 @@ const leagueMap = {
 async function main() {
     // instantiate clients
     const bet105 = new Bet105Client();
-    const kalshi = new KalshiClient(kalshiAPIKey, pathToPrivKey);
+    const polymarket = new PolymarketClient();
     const matcher = new EventMatcher();
 
     // tracks which leagues are currently monitored
@@ -62,46 +58,16 @@ async function main() {
         }
     }
 
-    // callback for kalshi orderbook update
-    const onKalshiUpdate = (update) => {
-        const gameKey = matcher.getGameKeyFromTicker(update.ticker);
-                
-        if (gameKey) {
-            finder.onKalshiUpdate(update, gameKey, matcher.getGameInfo(gameKey).league);
-        }
+    // callback for polymarket odds update
+    const onPolyUpdate = (odds) => {
+        console.log(odds);
     }
 
-    // adds league to each client -- used for live league adding
-    const addLeague = async (kalshiLeague) => {
-        await bet105.addLeague(leagueMap[kalshiLeague]);
-        await kalshi.addLeague(`KX${kalshiLeague}GAME`);
-
-        activeLeagues.push(kalshiLeague);
-    }
-
-    const buildAndSubscribe = () => {
-        // loop through current activeLeagues -> build events for each
-        for (const league of activeLeagues) {
-            matcher.buildEvents(bet105.getEvents(), kalshi.getTickers(), league);
-        }
-
-        // subscribe to all events 
-        bet105.subscribeToEvents(onBet105Update);
-        kalshi.subscribe(onKalshiUpdate);
-    }
-
-    // start clients 
-    await bet105.start();
-    await kalshi.start();
-
-    // add leagues to each client at start
-    for (const league of activeLeagues) {
-        await bet105.addLeague(leagueMap[league]);
-        await kalshi.addLeague(`KX${league}GAME`);
-    }
+    await polymarket.connect();
+    await polymarket.subscribeToLeague('nhl', onPolyUpdate);
 
     // build events with matcher and subscribe to ws updates
-    buildAndSubscribe();
+    // buildAndSubscribe();
 
     // refresh liveEvents for bet105 every 10 minutes -- DEBUG
     // setInterval(async () => {
